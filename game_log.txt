@@ -1,0 +1,25 @@
+--- Vault Codebreaker Game Log ---
+Game Date: 2025-04-18 23:11:42
+Secret Code: 1
+Code Length: 4
+Digit Range: 0-9
+Duplicates Allowed: 1
+Max Attempts: 10
+---------------------------------
+Attempt 1: 1234 => Feedback: M C W W | Score: 11
+Attempt 2: 5217 => Feedback: W C M W | Score: 22
+Attempt 3: 8251 => Feedback: M C W C | Score: 45
+Attempt 4: 9281 => Feedback: W C C C | Score: 73
+Attempt 5: 0281 => Feedback: C C C C | Score: 113
+--- Vault Codebreaker Game Log ---
+Game Date: 2025-05-06 12:39:29
+Secret Code: 3
+Code Length: 4
+Digit Range: 0-9
+Duplicates Allowed: 1
+Max Attempts: 10
+---------------------------------
+Attempt 1: 3459 => Feedback: M M M W | Score: 13
+Attempt 2: 4385 => Feedback: C M W M | Score: 31
+Attempt 3: 4573 => Feedback: C C M M | Score: 61
+Attempt 4: 4537 => Feedback: C C C C | Score: 101

@@ -2,224 +2,320 @@
 #include <stdlib.h>
 #include <time.h>
 
-void dosya_temizleme()
-{
-    FILE *temp = fopen("ships.txt", "w");
-    if (temp == NULL) {
-        printf("File can not open!\n");
-    } 
-    else {
-        fclose(temp);  
-    }
-    
-    FILE *temp2 = fopen("battleship_log.txt", "w");
-    if (temp2 == NULL) {
-        printf("file can not open ! \n");
-    } 
-    else {
-        fclose(temp2);
-    }
-}
-
-void gemi_koyma(int arr[10][10], int gemi_boyutu, int etiket) 
-{
-    FILE *eyp = fopen("ships.txt", "a");
+void rules() {
+    int code_length, min_digit, max_digit, duplicates, attempts, points_correct, points_misplaced, penalty_wrong;
+    FILE* eyp = fopen("vault_config.txt", "w");
     if (eyp == NULL) {
-        printf("file can not open !\n");
+        printf("ERROR: File cannot be opened!\n");
         return;
     }
-    
-    int eksen;
-    int flag = 0;
-    int i;
 
-    while (!flag) {
-        eksen = rand() % 2;
-        
-        if (eksen == 0) { 
-            int x = rand() % 10;
-            int y = rand() % (11 - gemi_boyutu);
-            int okey = 1;
-            
-            for (i = 0; i < gemi_boyutu; i++) {
-                if (arr[x][y + i] != 0) {
-                    okey = 0;
-                    break;
-                }
-            }
-            
-            if (okey) {
-                for (i = 0; i < gemi_boyutu; i++) {
-                    arr[x][y + i] = etiket;
-                    fprintf(eyp, "%d %d %d\n", x, y + i, gemi_boyutu);
-                }
-                flag = 1;
-            }
-        }
-        else { 
-            int x = rand() % (11 - gemi_boyutu);
-            int y = rand() % 10;
-            int okey = 1;
-            
-            for (i = 0; i < gemi_boyutu; i++) {
-                if (arr[x + i][y] != 0) {
-                    okey = 0;
-                    break;
-                }
-            }
-            
-            if (okey) {
-                for (i = 0; i < gemi_boyutu; i++) {
-                    arr[x + i][y] = etiket;
-                    fprintf(eyp, "%d %d %d\n", x + i, y, gemi_boyutu);
-                }
-                flag = 1;
-            }               
-        }
-    }
+    /*kuralları al*/
+    do {
+        printf("Code length (e.g., 4): ");
+        scanf("%d", &code_length);
+    } while (code_length <= 0);
+
+    do {
+        printf("Digit range (min: 0 max: 9, e.g., 4 9): ");
+        scanf("%d %d", &min_digit, &max_digit);
+    } while (min_digit < 0 || max_digit <= min_digit);
+
+    do {
+        printf("Allow duplicates (0 = No, 1 = Yes): ");
+        scanf("%d", &duplicates);
+    } while (duplicates < 0 || duplicates > 1);
+
+    do {
+        printf("Maximum number of attempts: ");
+        scanf("%d", &attempts);
+    } while (attempts <= 0);
+
+    do {
+        printf("Points for correct digit in correct place (C): ");
+        scanf("%d", &points_correct);
+    } while (points_correct <= 0);
+
+    do {
+        printf("Points for misplaced digit (M): ");
+        scanf("%d", &points_misplaced);
+    } while (points_misplaced <= 0);
+
+    do {
+        printf("Penalty for wrong digit (W): ");
+        scanf("%d", &penalty_wrong);
+    } while (penalty_wrong <= 0);
+
+    /*dosyaya atma*/
+    fprintf(eyp, "CODE_LENGTH= %d\nDIGIT_MIN= %d\nDIGIT_MAX= %d\nMAX_ATTEMPTS= %d\nALLOW_DUPLICATES= %d\n",
+            code_length, min_digit, max_digit, attempts, duplicates);
+    fprintf(eyp, "POINTS_CORRECT= %d\nPOINTS_MISPLACED= %d\nPENALTY_WRONG= %d\n", points_correct, points_misplaced, penalty_wrong);
+
     fclose(eyp);
 }
 
-int kullanici_girdisi_al(int *x, int *y, char konumlar[10][10]) 
-{
-    char input[20];
+int* generate_code() {
+    int code_length, min_digit, max_digit, duplicates,i,j;
+    FILE* eyp = fopen("vault_config.txt", "r");
+    if (eyp == NULL) {
+        printf("ERROR: vault_config.txt not found!\n");
+        return NULL;
+    }
 
-    while (1) {
-        printf("Enter coordinates(X to quit): ");
-        fgets(input, sizeof(input), stdin);
+    fscanf(eyp, "CODE_LENGTH= %d\nDIGIT_MIN= %d\nDIGIT_MAX= %d\nMAX_ATTEMPTS= %*d\nALLOW_DUPLICATES= %d\n", 
+            &code_length, &min_digit, &max_digit, &duplicates);
 
-        if ((input[0] == 'x' || input[0] == 'X') && (input[1] == '\n' || input[1] == '\0')) {
-            return -1;
+    fclose(eyp);
+
+    int* code = (int*)malloc(code_length * sizeof(int));
+    if (code == NULL) {
+        printf("ERROR: Memory allocation failed for code.\n");
+        return NULL;
+    }
+
+    for (i = 0; i < code_length; i++) {
+        if (duplicates == 0) {
+            int unique;
+            do {
+                unique = 1;
+                code[i] = rand() % (max_digit - min_digit + 1) + min_digit;
+                for (j = 0; j < i; j++) {
+                    if (code[i] == code[j]) {
+                        unique = 0;
+                        break;
+                    }
+                }
+            } while (!unique);
+        } else {
+            code[i] = rand() % (max_digit - min_digit + 1) + min_digit;
         }
+    }
 
-        if (sscanf(input, "%d %d", x, y) != 2) {
-            printf("Invalid entry! Please enter two numbers between 0 and 9 or press 'X' to exit \n");
-            continue;
-        }
+    /*dosyaya atma*/
+    FILE* vault_code_file = fopen("vault_code.txt", "w");
+    if (vault_code_file == NULL) {
+        printf("ERROR: File vault_code.txt could not be opened for writing.\n");
+        free(code);
+        return NULL;
+    }
 
-        if (*x < 0 || *x >= 10 || *y < 0 || *y >= 10) {
-            printf("The coordinates must be in the range 0-9 \n");
-            continue;
-        }
+    for (i = 0; i < code_length; i++) {
+        fprintf(vault_code_file, "%d ", code[i]);
+    }
+    fprintf(vault_code_file, "\n");
 
-        if (konumlar[*x][*y] == 'X' || konumlar[*x][*y] == 'O') {
-            printf("You've shot at this location before! Try another location \n");
-            continue;
+    fclose(vault_code_file);
+
+    return code;
+}
+
+int* get_guess(int code_length) {
+    int i;
+    int* guess = (int*)malloc(code_length * sizeof(int));
+    if (guess == NULL) {
+        printf("ERROR: Memory allocation failed for guess.\n");
+        return NULL;
+    }
+
+    printf("Enter your guess (e.g., 1 2 3 4): ");
+    for (i = 0; i < code_length; i++) {
+        scanf("%d", &guess[i]);
+    }
+
+    return guess;
+}
+
+char* check_guess_and_vault_code(int* vault, int* guess, int length) {
+    int i,j;
+    char* feedback = (char*)malloc(length * sizeof(char));
+    if (feedback == NULL) {
+        printf("ERROR: Memory allocation failed for feedback.\n");
+        return NULL;
+    }
+
+    /*yeri doğru mu*/
+    for (i = 0; i < length; i++) {
+        if (guess[i] == vault[i]) {
+            feedback[i] = 'C';  
+        } else {
+            feedback[i] = 'W';  /*yanlış yer*/
         }
-        
-        return 1;
+    }
+
+    /*kalanları m yap*/
+    for (i = 0; i < length; i++) {
+        if (feedback[i] == 'W') {  
+            for (j = 0; j < length; j++) {
+                if (guess[i] == vault[j] && i != j && feedback[j] != 'C') {
+                    feedback[i] = 'M'; 
+                    break;
+                }
+            }
+        }
+    }
+
+    return feedback;
+}
+
+void log_game(int attempt, int* guess, char* feedback, int score) {
+    int i;
+    FILE* log_file = fopen("game_log.txt", "a");
+    if (log_file == NULL) {
+        printf("ERROR: Could not open game_log.txt!\n");
+        return;
+    }
+
+    
+    time_t t;
+    struct tm* tm_info;
+    char date_time[25];
+    time(&t);
+    tm_info = localtime(&t);
+    strftime(date_time, 25, "%Y-%m-%d %H:%M:%S", tm_info);
+
+    if (attempt == 1) {
+        fprintf(log_file, "--- Vault Codebreaker Game Log ---\n");
+        fprintf(log_file, "Game Date: %s\n", date_time);
+        fprintf(log_file, "Secret Code: %d\n", guess[0]); 
+        fprintf(log_file, "Code Length: %d\n", 4);  
+        fprintf(log_file, "Digit Range: 0-9\n");
+        fprintf(log_file, "Duplicates Allowed: 1\n");
+        fprintf(log_file, "Max Attempts: 10\n");
+        fprintf(log_file, "---------------------------------\n");
+    }
+        /*adımlar*/
+    fprintf(log_file, "Attempt %d: ", attempt);
+    for (i = 0; i < 4; i++) {
+        fprintf(log_file, "%d", guess[i]);
+    }
+    fprintf(log_file, " => Feedback: ");
+    for (i = 0; i < 4; i++) {
+        fprintf(log_file, "%c ", feedback[i]);
+    }
+    fprintf(log_file, "| Score: %d\n", score);
+
+    fclose(log_file);
+}
+
+void print_game_result(int score) {
+    if (score >= 90) {
+        printf("Code Master \n");
+    } else if (score >= 70) {
+        printf("Cipher Hunter \n");
+    } else if (score >= 50) {
+        printf("Number Sleuth \n");
+    } else if (score >= 30) {
+        printf("Safe Kicker \n");
+    } else if (score >= 10) {
+        printf("Lucky Breaker \n");
+    } else {
+        printf("Code Potato \n");
     }
 }
 
-int main() 
-{
-    char play_again;
+void game_part() {
+    int* vault_code = generate_code();
+    if (vault_code == NULL) return;
 
-    do {
-        char konumlar[10][10];
-        int gemi_yerleri[10][10] = {0};
-        int i, j, x, y, flag;
-        int count2 = 2;
-        int count3 = 3;
-        int count4 = 4;
-        int count6 = 3;
-        int number_of_shoot = 0;
-        flag = 0;
-        
-        srand(time(NULL));
-        dosya_temizleme();
-        
-        gemi_koyma(gemi_yerleri, 2, 2);
-        gemi_koyma(gemi_yerleri, 3, 3);
-        gemi_koyma(gemi_yerleri, 3, 6);
-        gemi_koyma(gemi_yerleri, 4, 4);
+    int code_length, attempts, points_correct, points_misplaced, penalty_wrong;
+    FILE* eyp = fopen("vault_config.txt", "r");
+    if (eyp == NULL) {
+        printf("ERROR: vault_config.txt not found!\n");
+        free(vault_code);
+        return;
+    }
 
-        for (i = 0; i < 10; i++) {
-            for (j = 0; j < 10; j++) {
-                konumlar[i][j] = '-';
+    fscanf(eyp, "CODE_LENGTH= %d\nDIGIT_MIN= %*d\nDIGIT_MAX= %*d\nMAX_ATTEMPTS= %d\nALLOW_DUPLICATES= %*d\n", 
+           &code_length, &attempts);
+    fscanf(eyp, "POINTS_CORRECT= %d\nPOINTS_MISPLACED= %d\nPENALTY_WRONG= %d\n", 
+           &points_correct, &points_misplaced, &penalty_wrong);
+
+    fclose(eyp);
+
+    int* guess;
+    char* feedback;
+    int score = 0;
+    int flag = 1; 
+    int attempt = 1;
+
+    while (flag) {
+        int i ;
+        if (attempts <= 0) {  
+            printf("Game Over! You ran out of attempts.\n");
+            break;
+        }
+
+        guess = get_guess(code_length);
+        if (guess == NULL) {
+            free(vault_code);
+            return;
+        }
+
+        feedback = check_guess_and_vault_code(vault_code, guess, code_length);
+        printf("Feedback: ");
+        for (i = 0; i < code_length; i++) {
+            printf("%c ", feedback[i]);
+        }
+        printf("\n");
+
+        for (i = 0; i < code_length; i++) {
+            if (feedback[i] == 'C') {
+                score += points_correct;
+            } else if (feedback[i] == 'M') {
+                score += points_misplaced;
+            } else {
+                score -= penalty_wrong;
             }
         }
 
-        FILE *eyp = fopen("battleship_log.txt", "a");
-        if (eyp == NULL) {
-            printf("file can not open !\n");
+        log_game(attempt, guess, feedback, score);
+
+        // Check if player guessed the code
+        int correct = 1;
+        for (i = 0; i < code_length; i++) {
+            if (feedback[i] != 'C') {
+                correct = 0;
+                break;
+            }
+        }
+
+        if (correct) {
+            printf("Congratulations! You've guessed the code.\n");
+            printf("Final score: %d\n", score);
+            flag = 0;  // End the game
+        } else {
+            attempts--;  // Decrease remaining attempts
+        }
+
+        free(feedback);
+        free(guess);
+        attempt++;
+    }
+
+    print_game_result(score);  // Print result based on score
+
+    free(vault_code);
+}
+
+int main() {
+    srand(time(NULL));
+
+    char choice;
+    printf("Enter 'A' for Admin mode or 'P' for Player mode: ");
+    scanf(" %c", &choice);
+
+    switch (choice) {
+        case 'A':
+            rules();
+            break;
+        case 'P':
+            game_part();
+            break;
+        default:
+            printf("Invalid choice. Exiting...\n");
             return 0;
-        }
-        
-        while (flag < 12) {
-            int sonuc = kullanici_girdisi_al(&x, &y, konumlar);
-            if (sonuc == -1) {
-                printf("Game terminated by user \n");
-                fclose(eyp);
-                return 0;
-            }
-
-            fprintf(eyp, "Shoot : %d %d ", x, y);
-
-            if (gemi_yerleri[x][y] == 2) {
-                printf("HIT!\n");
-                fprintf(eyp, "-HIT!\n");
-                konumlar[x][y] = 'X';
-                count2--;
-                if (count2 == 0) {
-                    printf("Congratulations you sank a 2-cell ship\n");
-                }
-                flag++;
-            } 
-            else if (gemi_yerleri[x][y] == 3) {
-                printf("HIT!\n");
-                fprintf(eyp, "-HIT!\n");
-                konumlar[x][y] = 'X';
-                count3--;
-                if (count3 == 0) {
-                    printf("Congratulations you sank a 3-cell ship\n");
-                }
-                flag++;
-            }
-            else if (gemi_yerleri[x][y] == 6) {
-                printf("HIT!\n");
-                fprintf(eyp, "-HIT\n");
-                konumlar[x][y] = 'X';
-                count6--;
-                if (count6 == 0) {
-                    printf("Congratulations you sank a 3-cell ship\n");
-                }
-                flag++;
-            }
-            else if (gemi_yerleri[x][y] == 4) {
-                printf("HIT!\n");
-                fprintf(eyp, "-HIT!\n");
-                konumlar[x][y] = 'X';
-                count4--;
-                if (count4 == 0) {
-                    printf("Congratulations you sank a 4-cell ship\n");
-                }
-                flag++;
-            }
-            else {
-                printf("MISS\n");
-                konumlar[x][y] = 'O';
-                fprintf(eyp, "-MISS\n");
-            }
-
-            for (i = 0; i < 10; i++) {
-                for (j = 0; j < 10; j++) {
-                    printf("%c ", konumlar[i][j]);
-                }
-                printf("\n");
-            }
-            number_of_shoot++;
-        }
-        fclose(eyp);
-
-        printf("All ships are sank! Total shoots:%d \n", number_of_shoot);
-        printf("Press 'N' to play again or 'X' to exit : \n");
-        
-        char input[10];
-        fgets(input, sizeof(input), stdin);
-        play_again = input[0];
-        
-    } while (play_again == 'n' || play_again == 'N');
+    }
 
     return 0;
 }
+
