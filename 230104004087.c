@@ -1,321 +1,233 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include<stdio.h>
+#include<string.h>
+#include<time.h>
+#include<stdlib.h>
 
-void rules() {
-    int code_length, min_digit, max_digit, duplicates, attempts, points_correct, points_misplaced, penalty_wrong;
-    FILE* eyp = fopen("vault_config.txt", "w");
-    if (eyp == NULL) {
-        printf("ERROR: File cannot be opened!\n");
-        return;
-    }
+enum Color {RGB, BGR, GRAY};
+#define MAX 3
+int TOP = 0;
+char Stack[MAX];
 
-    /*kuralları al*/
-    do {
-        printf("Code length (e.g., 4): ");
-        scanf("%d", &code_length);
-    } while (code_length <= 0);
-
-    do {
-        printf("Digit range (min: 0 max: 9, e.g., 4 9): ");
-        scanf("%d %d", &min_digit, &max_digit);
-    } while (min_digit < 0 || max_digit <= min_digit);
-
-    do {
-        printf("Allow duplicates (0 = No, 1 = Yes): ");
-        scanf("%d", &duplicates);
-    } while (duplicates < 0 || duplicates > 1);
-
-    do {
-        printf("Maximum number of attempts: ");
-        scanf("%d", &attempts);
-    } while (attempts <= 0);
-
-    do {
-        printf("Points for correct digit in correct place (C): ");
-        scanf("%d", &points_correct);
-    } while (points_correct <= 0);
-
-    do {
-        printf("Points for misplaced digit (M): ");
-        scanf("%d", &points_misplaced);
-    } while (points_misplaced <= 0);
-
-    do {
-        printf("Penalty for wrong digit (W): ");
-        scanf("%d", &penalty_wrong);
-    } while (penalty_wrong <= 0);
-
-    /*dosyaya atma*/
-    fprintf(eyp, "CODE_LENGTH= %d\nDIGIT_MIN= %d\nDIGIT_MAX= %d\nMAX_ATTEMPTS= %d\nALLOW_DUPLICATES= %d\n",
-            code_length, min_digit, max_digit, attempts, duplicates);
-    fprintf(eyp, "POINTS_CORRECT= %d\nPOINTS_MISPLACED= %d\nPENALTY_WRONG= %d\n", points_correct, points_misplaced, penalty_wrong);
-
-    fclose(eyp);
-}
-
-int* generate_code() {
-    int code_length, min_digit, max_digit, duplicates,i,j;
-    FILE* eyp = fopen("vault_config.txt", "r");
-    if (eyp == NULL) {
-        printf("ERROR: vault_config.txt not found!\n");
-        return NULL;
-    }
-
-    fscanf(eyp, "CODE_LENGTH= %d\nDIGIT_MIN= %d\nDIGIT_MAX= %d\nMAX_ATTEMPTS= %*d\nALLOW_DUPLICATES= %d\n", 
-            &code_length, &min_digit, &max_digit, &duplicates);
-
-    fclose(eyp);
-
-    int* code = (int*)malloc(code_length * sizeof(int));
-    if (code == NULL) {
-        printf("ERROR: Memory allocation failed for code.\n");
-        return NULL;
-    }
-
-    for (i = 0; i < code_length; i++) {
-        if (duplicates == 0) {
-            int unique;
-            do {
-                unique = 1;
-                code[i] = rand() % (max_digit - min_digit + 1) + min_digit;
-                for (j = 0; j < i; j++) {
-                    if (code[i] == code[j]) {
-                        unique = 0;
-                        break;
-                    }
-                }
-            } while (!unique);
-        } else {
-            code[i] = rand() % (max_digit - min_digit + 1) + min_digit;
-        }
-    }
-
-    /*dosyaya atma*/
-    FILE* vault_code_file = fopen("vault_code.txt", "w");
-    if (vault_code_file == NULL) {
-        printf("ERROR: File vault_code.txt could not be opened for writing.\n");
-        free(code);
-        return NULL;
-    }
-
-    for (i = 0; i < code_length; i++) {
-        fprintf(vault_code_file, "%d ", code[i]);
-    }
-    fprintf(vault_code_file, "\n");
-
-    fclose(vault_code_file);
-
-    return code;
-}
-
-int* get_guess(int code_length) {
-    int i;
-    int* guess = (int*)malloc(code_length * sizeof(int));
-    if (guess == NULL) {
-        printf("ERROR: Memory allocation failed for guess.\n");
-        return NULL;
-    }
-
-    printf("Enter your guess (e.g., 1 2 3 4): ");
-    for (i = 0; i < code_length; i++) {
-        scanf("%d", &guess[i]);
-    }
-
-    return guess;
-}
-
-char* check_guess_and_vault_code(int* vault, int* guess, int length) {
-    int i,j;
-    char* feedback = (char*)malloc(length * sizeof(char));
-    if (feedback == NULL) {
-        printf("ERROR: Memory allocation failed for feedback.\n");
-        return NULL;
-    }
-
-    /*yeri doğru mu*/
-    for (i = 0; i < length; i++) {
-        if (guess[i] == vault[i]) {
-            feedback[i] = 'C';  
-        } else {
-            feedback[i] = 'W';  /*yanlış yer*/
-        }
-    }
-
-    /*kalanları m yap*/
-    for (i = 0; i < length; i++) {
-        if (feedback[i] == 'W') {  
-            for (j = 0; j < length; j++) {
-                if (guess[i] == vault[j] && i != j && feedback[j] != 'C') {
-                    feedback[i] = 'M'; 
-                    break;
-                }
-            }
-        }
-    }
-
-    return feedback;
-}
-
-void log_game(int attempt, int* guess, char* feedback, int score) {
-    int i;
-    FILE* log_file = fopen("game_log.txt", "a");
-    if (log_file == NULL) {
-        printf("ERROR: Could not open game_log.txt!\n");
-        return;
-    }
-
-    
-    time_t t;
-    struct tm* tm_info;
-    char date_time[25];
-    time(&t);
-    tm_info = localtime(&t);
-    strftime(date_time, 25, "%Y-%m-%d %H:%M:%S", tm_info);
-
-    if (attempt == 1) {
-        fprintf(log_file, "--- Vault Codebreaker Game Log ---\n");
-        fprintf(log_file, "Game Date: %s\n", date_time);
-        fprintf(log_file, "Secret Code: %d\n", guess[0]); 
-        fprintf(log_file, "Code Length: %d\n", 4);  
-        fprintf(log_file, "Digit Range: 0-9\n");
-        fprintf(log_file, "Duplicates Allowed: 1\n");
-        fprintf(log_file, "Max Attempts: 10\n");
-        fprintf(log_file, "---------------------------------\n");
-    }
-        /*adımlar*/
-    fprintf(log_file, "Attempt %d: ", attempt);
-    for (i = 0; i < 4; i++) {
-        fprintf(log_file, "%d", guess[i]);
-    }
-    fprintf(log_file, " => Feedback: ");
-    for (i = 0; i < 4; i++) {
-        fprintf(log_file, "%c ", feedback[i]);
-    }
-    fprintf(log_file, "| Score: %d\n", score);
-
-    fclose(log_file);
-}
-
-void print_game_result(int score) {
-    if (score >= 90) {
-        printf("Code Master \n");
-    } else if (score >= 70) {
-        printf("Cipher Hunter \n");
-    } else if (score >= 50) {
-        printf("Number Sleuth \n");
-    } else if (score >= 30) {
-        printf("Safe Kicker \n");
-    } else if (score >= 10) {
-        printf("Lucky Breaker \n");
+char pop() {
+    if (TOP > 0) {
+        TOP--;
+        return Stack[TOP];
     } else {
-        printf("Code Potato \n");
+        return '\0';
     }
 }
 
-void game_part() {
-    int* vault_code = generate_code();
-    if (vault_code == NULL) return;
+void push(int a) {
+    if (TOP < MAX) {
+        Stack[TOP] = a;
+        TOP++;
+    }
+}
 
-    int code_length, attempts, points_correct, points_misplaced, penalty_wrong;
-    FILE* eyp = fopen("vault_config.txt", "r");
-    if (eyp == NULL) {
-        printf("ERROR: vault_config.txt not found!\n");
-        free(vault_code);
-        return;
+int max_operation(int* chunk, int* corresponding_chunk_part, int chunk_size) {
+    int max = 0;
+    int index = 0;
+    int i;
+    int current_multip;
+
+    for (i = 0; i < chunk_size; i++) {
+        current_multip = chunk[index] * corresponding_chunk_part[i];
+        if (current_multip >= max) {
+            max = current_multip;
+        }
+        index++;
+    }
+    return max;
+}
+
+int avg_operation(int* chunk, int* corresponding_chunk_part, int chunk_size) {
+    int sum = 0;
+    int i;
+    int index = 0;
+
+    for (i = 0; i < chunk_size; i++) {
+        sum += chunk[index] * corresponding_chunk_part[i];
+        index++;
+    }
+    return sum / chunk_size;
+}
+
+int apply_operation(int* chunk, int* corresponding_chunk_part, int chunk_size) {
+    int return_value;
+    char operation_code=pop();
+    if (operation_code == 'm') {
+        return_value = max_operation(chunk, corresponding_chunk_part, chunk_size);
+        return return_value;
+    } else {
+        return_value = avg_operation(chunk, corresponding_chunk_part, chunk_size);
+        return return_value;
+    }
+}
+
+void make_input_file(int* chunk, int* line2, int* line3, int* line4, int chunk_size, int line_size) {
+    srand(time(NULL));
+    int i;
+    FILE* input;
+    input = fopen("input.txt", "w");
+    if (input == NULL) {
+        printf("file can not open \n");
     }
 
-    fscanf(eyp, "CODE_LENGTH= %d\nDIGIT_MIN= %*d\nDIGIT_MAX= %*d\nMAX_ATTEMPTS= %d\nALLOW_DUPLICATES= %*d\n", 
-           &code_length, &attempts);
-    fscanf(eyp, "POINTS_CORRECT= %d\nPOINTS_MISPLACED= %d\nPENALTY_WRONG= %d\n", 
-           &points_correct, &points_misplaced, &penalty_wrong);
-
-    fclose(eyp);
-
-    int* guess;
-    char* feedback;
-    int score = 0;
-    int flag = 1; 
-    int attempt = 1;
-
-    while (flag) {
-        int i ;
-        if (attempts <= 0) {  
-            printf("Game Over! You ran out of attempts.\n");
-            break;
-        }
-
-        guess = get_guess(code_length);
-        if (guess == NULL) {
-            free(vault_code);
-            return;
-        }
-
-        feedback = check_guess_and_vault_code(vault_code, guess, code_length);
-        printf("Feedback: ");
-        for (i = 0; i < code_length; i++) {
-            printf("%c ", feedback[i]);
-        }
-        printf("\n");
-
-        for (i = 0; i < code_length; i++) {
-            if (feedback[i] == 'C') {
-                score += points_correct;
-            } else if (feedback[i] == 'M') {
-                score += points_misplaced;
-            } else {
-                score -= penalty_wrong;
-            }
-        }
-
-        log_game(attempt, guess, feedback, score);
-
-        // Check if player guessed the code
-        int correct = 1;
-        for (i = 0; i < code_length; i++) {
-            if (feedback[i] != 'C') {
-                correct = 0;
-                break;
-            }
-        }
-
-        if (correct) {
-            printf("Congratulations! You've guessed the code.\n");
-            printf("Final score: %d\n", score);
-            flag = 0;  // End the game
-        } else {
-            attempts--;  // Decrease remaining attempts
-        }
-
-        free(feedback);
-        free(guess);
-        attempt++;
+    /*chunk*/
+    for (i = 0; i < chunk_size; i++) {
+        chunk[i] = rand() % 100;
+        fprintf(input, "%d ", chunk[i]);
     }
+    fprintf(input, "\n");
 
-    print_game_result(score);  // Print result based on score
+    /*line2*/
+    for (i = 0; i < line_size; i++) {
+        line2[i] = rand() % 100;
+        fprintf(input, "%d ", line2[i]);
+    }
+    fprintf(input, "\n");
 
-    free(vault_code);
+    /*line3*/
+    for (i = 0; i < line_size; i++) {
+        line3[i] = rand() % 100;
+        fprintf(input, "%d ", line3[i]);
+    }
+    fprintf(input, "\n");
+
+    /*line4*/
+    for (i = 0; i < line_size; i++) {
+        line4[i] = rand() % 100;
+        fprintf(input, "%d ", line4[i]);
+    }
+    fprintf(input, "\n");
+
+    fclose(input);
+}
+
+void print_output_file(FILE* output, int r, int g, int b, enum Color color) {
+    if (color == RGB) {
+        fprintf(output, "[%d,%d,%d]", r, g, b);
+    } else if (color == BGR) {
+        fprintf(output, "[%d,%d,%d]", b, g, r);
+    }
+}
+
+void print_gray_lines(FILE* output, int* results2, int* results3, int* results4, int count) {
+    int i;
+    fprintf(output, "[");
+    for (i = 0; i < count; i++) {
+        fprintf(output, "%d", results2[i]);
+        if (i != count - 1) fprintf(output, ",");
+    }
+    fprintf(output, "]\n");
+
+    fprintf(output, "[");
+    for (i = 0; i < count; i++) {
+        fprintf(output, "%d", results3[i]);
+        if (i != count - 1) fprintf(output, ",");
+    }
+    fprintf(output, "]\n");
+
+    fprintf(output, "[");
+    for (i = 0; i < count; i++) {
+        fprintf(output, "%d", results4[i]);
+        if (i != count - 1) fprintf(output, ",");
+    }
+    fprintf(output, "]");
 }
 
 int main() {
-    srand(time(NULL));
+    int arr[] = {3, 6, 9};
+    int arr2[] = {20, 50, 80};
+    int color;
+    int i;
+    int chunk_size = arr[rand() % 3];
+    int line_size = arr2[rand() % 3];
+    int x;
+    int* chunk = malloc(sizeof(int) * chunk_size);
+    int* line2 = malloc(sizeof(int) * line_size);
+    int* line3 = malloc(sizeof(int) * line_size);
+    int* line4 = malloc(sizeof(int) * line_size);
 
-    char choice;
-    printf("Enter 'A' for Admin mode or 'P' for Player mode: ");
-    scanf(" %c", &choice);
+    make_input_file(chunk, line2, line3, line4, chunk_size, line_size);
 
-    switch (choice) {
-        case 'A':
-            rules();
-            break;
-        case 'P':
-            game_part();
-            break;
-        default:
-            printf("Invalid choice. Exiting...\n");
-            return 0;
+    printf("enter a color (0=RGB, 1=BGR, 2=GRAY): ");
+    scanf("%d", &color);
+
+    /* kullanıcıdan max/avg işlemlerini stack'e al */
+    char input_op[4];
+
+    printf("Enter operation # (max or avg): ");
+    scanf("%s", input_op);
+    if (strcmp(input_op, "max") == 0) {
+        push('m');
+    } else if (strcmp(input_op, "avg") == 0) {
+        push('a');
+    } else {
+        printf("Invalid input.\n");
     }
 
+    FILE* output = fopen("output.txt", "w");
+    if (output == NULL) {
+        printf("file can not open \n");
+        return 1;
+    }
+
+
+        /*x correspoing line oluşturmak için şart*/
+            x = 0;
+            /*output formatı*/
+            switch(color){
+            case RGB: fprintf(output,"RGB : ->"); break;
+            case BGR: fprintf(output,"BGR : ->"); break;
+            case GRAY: fprintf(output,"GRAY : ->"); break;
+}
+    if (color == GRAY) {
+        int len = line_size - chunk_size + 1;
+        int* results2 = malloc(sizeof(int) * len);
+        int* results3 = malloc(sizeof(int) * len);
+        int* results4 = malloc(sizeof(int) * len);
+
+        for (i = 0; i < len; i++) {
+
+                                                /*böylece başta ilk index sonra ilk indec artı x . indexi göndermiş oluyorum*/
+            results2[i] = apply_operation(chunk, line2 + x, chunk_size);
+            results3[i] = apply_operation(chunk, line3 + x, chunk_size);
+            results4[i] = apply_operation(chunk, line4 + x, chunk_size);
+            x++;
+        }
+        print_gray_lines(output, results2, results3, results4, len);
+        free(results2);
+        free(results3);
+        free(results4);
+    } 
+    else {
+
+        for (i = 0; i <= line_size - chunk_size; i++) {
+
+            if (color == RGB) {
+                int r = apply_operation(chunk, line2 + x, chunk_size);
+                int g = apply_operation(chunk, line3 + x, chunk_size);
+                int b = apply_operation(chunk, line4 + x, chunk_size);
+
+                print_output_file(output, r, g, b, RGB);
+                if (i != line_size - chunk_size) fprintf(output, ",");
+            } else if (color == BGR) {
+                
+                int r = apply_operation(chunk, line4 + x, chunk_size);
+                int g = apply_operation(chunk, line3 + x, chunk_size);
+                int b = apply_operation(chunk, line2 + x, chunk_size);
+                print_output_file(output, r, g, b, BGR);
+                if (i != line_size - chunk_size) fprintf(output, ",");
+            }
+            x++;
+        }
+    }
+
+    fclose(output);
+    free(chunk);
+    free(line2);
+    free(line3);
+    free(line4);
     return 0;
 }
-
