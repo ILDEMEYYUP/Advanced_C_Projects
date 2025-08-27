@@ -1,432 +1,248 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<time.h>
+#include<string.h>
 
 typedef struct {
-    int row;
-    int column;
-    int **data;
-} matrix;
+    int total_damage_dealt;
+    int mana_spent;
+    int number_of_recoveries;
+
+}battle_statu;
 
 typedef struct {
-    int row;
-    int column;
-    char **data;
-} table;
 
-typedef enum {
-    HUMAN =-1,
-    EMPTY = 0,
-    COMPUTER=1,
-    POSSIBLE_MOVE=2
-}Cell_state;
+    char name [20];
+    char magic_class[20];
+    int min_damage;
+    int max_damage;
+    int min_mana_cost;
+    int max_mana_cost;
 
-typedef enum {
-    char_human ='O',
-    char_copm='X'
-}player;
+}spells;
 
+typedef struct {
 
-char *letters(int size); /*tabloyu yazdırma ksımındaki harfler için var size kadar harf kouyor a b c d ..*/
+    char name [20];
+    char magic_class[20];
+    int HP;
+    int mana ;
+    int is_alive;
+    battle_statu battle_stat;
+    spells spell[3];
 
-matrix create_matrix(int row, int column); /*tahtanın sayılsal ifadesini bulundurma*/
+}wizard;
 
-void free_matrix(matrix *m); /*sonda oluşturduğum hafızayı boşa alma*/
+void declare_spell(spells *s)
+{
+    FILE*spell_book=fopen("spellbook.txt","r");
+    if(spell_book==NULL)
+    {
+        printf("spellbook can not open !\n");
+        exit(1);
+    }
 
-table create_table (int row, int column, matrix *m); /*tabloyu yazdırma ksımı*/
+    int i=0;
 
-void free_table(table *t) ; /*sonda oluşturduğum hafızayı boşa alma*/
+    while(fscanf(spell_book,"%[^,],%[^,],%d,%d,%d,%d\n",
+            s[i].name,
+            s[i].magic_class
+            ,&s[i].min_damage
+            ,&s[i].max_damage
+            ,&s[i].min_mana_cost
+            ,&s[i].max_mana_cost)==6){i++;
+    }
+    fclose(spell_book);
+    
+}
 
-void print_table(table *t, int row, int column, char letter[]); /*her seferinde terminale tabloyu bastırma*/
+void unique_numbers_within_rage(int range ,int *arr,int size)
+{
+    
+    int is_ok=1,i;
+    int counter=0;
+    int num ;
+    while(counter<size)
+    {
 
-int get_coordinate(int *col_out, int *row_out, int max_row, int max_col, matrix *m);  /*kullanıcıdan doğru koordinat girişi */
+         num=(rand()%range) ;
+         is_ok=1;
 
-int game_state(table *t, matrix *m);  /*oyun bitti mi devam mı ona karar veriyor*/
-
-void mark_neighbors(matrix *m); /*matrix de ki oyuncu veya bilgisayr değriene göre komşu yerlere possible _move bırakma*/
-
-void  change_table(table *t, matrix *m, int player, char p); /*her hamleden sonra sağdan sola asağıdan yukarı çapraz hameleye göre tahtayı yeniden dizayn etme*/
-
-int test_flip_count(matrix m, int i, int j, int player);/*verilen koordinat seçilirse karşı oyuncunun kaç taşını yok edecek*/
-
-void find_best_move(matrix m, int player, int *best_i, int *best_j,char *letter); /*maximum sayıda tahtada bulunmka için en iyi hamle*/
-
-void computer_move(matrix *m, table *t,char *letter);  /*bilgisayarın hamleleri yazdırma vs */
-
-int main(void) {
-
-    /*ilk tabloları oluştur*/
-    table my_tab;
-    matrix my_matrix;
-    int row, column;
-    int col, row_idx;
-
-    /*tahtanın boyutunu alma*/
-
-do {
-        printf("Enter size of table: ");
-
-        scanf("%d", &row);
-
-        while (getchar() != '\n');
-
-        if (row % 2 != 0) printf("Size cannot be an odd number!\n");
-
-        if(row<4)printf("size must be at least 4!\n");
-
-    } while (row % 2 != 0 || row<3);
-
-    column = row;
-
-    my_matrix = create_matrix(row, column);
-
-    my_tab = create_table(row, column, &my_matrix);
-
-    mark_neighbors(&my_matrix);
-
-    char *letter = letters(column);
-
-
-
-    /*oyun kısmı burada*/
-    print_table(&my_tab, row, column, letter);
-
-    while (game_state(&my_tab, &my_matrix) != 1) {
-
-        if (get_coordinate(&col, &row_idx, row, column, &my_matrix))
+        for(i=0;i<counter;i++)
         {
+            if(arr[i]==num)
+            {
+                is_ok=0;
+            }
+        }
 
-            my_tab.data[row_idx][col] = char_human;
-
-            my_matrix.data[row_idx][col] = HUMAN;
-
-            change_table(&my_tab, &my_matrix, HUMAN, char_human);
-
-            mark_neighbors(&my_matrix);
-
-            print_table(&my_tab, row, column, letter);
-            
-            computer_move(&my_matrix, &my_tab,letter);
-
-            print_table(&my_tab, row, column, letter);
+        if(is_ok)
+        {
+            arr[counter]=num;
+            counter++;
         }
 
     }
 
-
-    free_matrix(&my_matrix);
-    free_table(&my_tab);
-    free(letter);
-    return 0;
 }
-char *letters(int size) {
+
+void duel(wizard *attacker,wizard *defender)
+{
+    int max_or_min_damage=rand()%2;
+    char damage_name[20];
+    int damage;
+    spells currnet_spell ;
+
+    if(attacker->mana<=0)
+    {
+        attacker->mana+=rand()%(20-10)+1;
+        attacker->battle_stat.number_of_recoveries++;
+        printf("%s is low on mana and meditates...\n",attacker->name);
+    }
+
+
+    if(max_or_min_damage==1)
+    {
+        currnet_spell =attacker->spell[rand()%3];
+        damage = currnet_spell.max_damage;
+        strcpy(damage_name,currnet_spell.name);
+        attacker->mana-=currnet_spell.max_mana_cost;
+        /*battle statu*/
+        attacker->battle_stat.mana_spent+=currnet_spell.max_mana_cost;
+    }
+    else{
+        currnet_spell =attacker->spell[rand()%3];
+        damage = currnet_spell.min_damage;
+        strcpy(damage_name,currnet_spell.name);
+        attacker->mana-=currnet_spell.min_mana_cost;
+        /*battle statu*/
+        attacker->battle_stat.mana_spent+=currnet_spell.min_mana_cost;
+
+    }
+    if(strcmp(attacker->magic_class,currnet_spell.magic_class)==0){
+        damage+=5;
+    }
+
+
+    printf("%s cast %s on %s \n",attacker->name,damage_name,defender->name);
+    defender->HP-=damage; 
+    /*battele statu*/
+    defender->battle_stat.total_damage_dealt+=damage;
+    printf("damage : %d| %s's HP: %d | %s's MANA %d \n",damage, defender->name, defender->HP, attacker->name,attacker->mana);
+    printf("-----------------------------------------------------------------\n");
+
+    if(defender->HP<0)
+    {
+        printf("winner ! %s the %s \n",attacker->name,attacker->magic_class);
+        return;
+    }
+
+
+    duel(defender,attacker);
+}
+
+
+int calculate_score(int stat[],int n)
+{
+    if(n==0){
+        return stat[0]*2;
+    }
+   else if (n==1)
+   {
+        return stat[1]+calculate_score(stat,0);
+   }
+   else {
+    return calculate_score(stat,1)-stat[2];
+
+   }
+}
+
+
+
+
+
+int  main (void)
+{
+    srand(time(NULL));
+    wizard wizards[4];
+
     int i;
-    char *lettr = malloc(sizeof(char) * (size + 1));  
-    if (lettr == NULL) {
-        printf("Memory allocation failed!\n");
-        exit(1);
-    }
-    for (i = 0; i < size; i++) {
-        lettr[i] = 'a' + i;}
+    int select_spell[3];
+    int attacker_or_defender[2];
+    int w=0;
+    int statu [3];
+    int score ;
 
-    lettr[size] = '\0';
-    return lettr;
-}
+    /*yetenekler tanımlndı */
+    int number_of_spell=6;
+    spells *created_spell=malloc(number_of_spell*sizeof(spells));
+    declare_spell(created_spell);
 
-matrix create_matrix(int row, int column) {
-    int i, j;
-    matrix m;
-    m.row = row;
-    m.column = column;
-    m.data = (int **)malloc(sizeof(int *) * row);
-    if (m.data == NULL) {
-        printf("Malloc failed for matrix rows!\n");
-        exit(1);}
 
-    for (i = 0; i < row; i++) {
-        m.data[i] = (int *)malloc(sizeof(int) * column);
-        if (m.data[i] == NULL) {
-            printf("Malloc failed for matrix row!\n");
-            exit(1);
-        }
-        for (j = 0; j < column; j++) {
-            m.data[i][j] = EMPTY;
-        }
-    }
-    return m;
-}
+    strcpy(wizards[0].name,"Naruto");
+    strcpy(wizards[0].magic_class,"ice");
 
-void free_matrix(matrix *m) {
-    int i;
-    for (i = 0; i < m->row; i++){
-        free(m->data[i]);}
-    free(m->data);
-}
+    strcpy(wizards[1].name,"Madara");
+    strcpy(wizards[1].magic_class,"fire");
 
-table create_table(int row, int column, matrix *m) {
-    int i, j;
-    table t;
-    t.row = row;
-    t.column = column;
+    strcpy(wizards[2].name,"Kakashi");
+    strcpy(wizards[2].magic_class,"water");
 
-    t.data = (char **)malloc(sizeof(char *) * row);
-    if (t.data == NULL) {
-        printf("Malloc failed for table rows!\n");
-        exit(1);
-    }
+    strcpy(wizards[3].name,"Sasuke");
+    strcpy(wizards[3].magic_class,"air");
 
-    for (i = 0; i < row; i++) {
-        t.data[i] = (char *)malloc(sizeof(char) * column);
-        if (t.data[i] == NULL) {
-            printf("Malloc failed for table row!\n");
-            exit(1);
-        }
-        for (j = 0; j < column; j++) {
-            t.data[i][j] = '.';  
-        }
-    }
 
-        t.data[row/2-1][column/2-1] = char_human;
-        t.data[row/2][column/2-1] = char_copm;
-        t.data[row/2][column/2] = char_human;
-        t.data[row/2-1][column/2] = char_copm;
+        /*büyücülerin ortak özelliklerini doldurma */
+        for(w=0;w<4;w++){
 
-        m->data[row/2-1][column/2-1] = HUMAN;
-        m->data[row/2][column/2-1] = COMPUTER;
-        m->data[row/2][column/2] = HUMAN;
-        m->data[row/2-1][column/2] = COMPUTER;
+            wizards[w].HP=100;
+            wizards[w].is_alive=1;
+            wizards[w].mana=100;
+            wizards[w].battle_stat.mana_spent=0;
+            wizards[w].battle_stat.number_of_recoveries=0;
+            wizards[w].battle_stat.total_damage_dealt=0;  
 
-    return t;
-}
+            unique_numbers_within_rage(number_of_spell,select_spell,3);
+            for(i=0;i<3;i++)
+            {
+                strcpy(wizards[w].spell[i].name,created_spell[select_spell[i]].name);
+                strcpy(wizards[w].spell[i].magic_class,created_spell[select_spell[i]].magic_class);
+                wizards[w].spell[i].min_damage=created_spell[select_spell[i]].min_damage;
+                wizards[w].spell[i].max_damage=created_spell[select_spell[i]].max_damage;
+                wizards[w].spell[i].min_mana_cost=created_spell[select_spell[i]].min_mana_cost;
+                wizards[w].spell[i].max_mana_cost=created_spell[select_spell[i]].max_mana_cost;
 
-void free_table(table *t) {
-    int i;
-    for (i = 0; i < t->row; i++){
-        free(t->data[i]);}
-    free(t->data);
-}
-
-void print_table(table *t, int row, int column, char letter[]) {
-    int i, j;
-    printf("  ");  
-    for (i = 0; i < column; i++) 
-        printf(" %c", letter[i]);
-    printf("\n");
-
-    for (i = 0; i < row; i++) {
-        printf("%2d ", i + 1);  
-        for (j = 0; j < column; j++) {
-            printf("%c ", t->data[i][j]);
-        }
-        printf("\n");
-    }
-}
-
-int get_coordinate(int *col_out, int *row_out, int max_row, int max_col, matrix *m) {
-    char input[10];
-    char col_char;
-    int row_num;
-    int return_val;
-    printf("Enter coordinate (e.g., a4): ");
-    if (fgets(input, sizeof(input), stdin) == NULL) {
-        printf("Input error!\n");
-        return_val = 0;
-    }
-
-    input[strcspn(input, "\n")] = '\0';  
-
-    if (sscanf(input, " %c%d", &col_char, &row_num) != 2) {
-        printf("Invalid format! Please enter like A4.\n");
-        return 0;
-    }
-
-    if (col_char >= 'A' && col_char <= 'Z') {
-        col_char = col_char + ('a' - 'A');
-    }
-
-    if (col_char < 'a' || col_char >= 'a' + max_col) {
-        printf("Column out of bounds! Allowed: a-%c\n", 'a' + max_col - 1);
-        return 0;
-    }
-
-    if (row_num < 1 || row_num > max_row) {
-        printf("Row out of bounds! Allowed: 1-%d\n", max_row);
-        return 0;
-    }
-
-    if (m->data[row_num-1][col_char - 'a'] == HUMAN || m->data[row_num-1][col_char - 'a'] == COMPUTER) {
-        printf("Enter different coordinate!\n");
-        return 0;
-    }
-
-    if (m->data[row_num-1][col_char - 'a'] == POSSIBLE_MOVE) {
-        *col_out = col_char - 'a';   
-        *row_out = row_num - 1;
-        return_val = 1;
-    }
-    return return_val;
-}
-
-int game_state(table *t, matrix *m) {
-    int i, j;
-    int game_over = 1;
-    int user_count = 0;
-    int comp_count = 0;
-
-    for (i = 0; i < m->row; i++) {
-        for (j = 0; j < m->column; j++) {
-            if (m->data[i][j] == POSSIBLE_MOVE) {
-                game_over = 0;
-                break;
             }
-            if (t->data[i][j] == char_human) user_count++;
-            if (t->data[i][j] == char_copm) comp_count++;
-        }
-    }
-    if (game_over == 1) {
-        if (user_count > comp_count) {
-            printf("You win!\n");
-        } else {
-            printf("You lose!\n");
-        }
-    }
-    return game_over;
 }
-
-void mark_neighbors(matrix *m) {
-    int i, j;
-
-    for (i = 0; i < m->row; i++) {
-        for (j = 0; j < m->column; j++) {
-            if (m->data[i][j] == HUMAN || m->data[i][j] == COMPUTER ) {
-                if (i < m->row - 1 && m->data[i + 1][j] == EMPTY) m->data[i + 1][j] = POSSIBLE_MOVE;
-
-                if (i > 0 && m->data[i - 1][j] == EMPTY) m->data[i - 1][j] = POSSIBLE_MOVE;
-
-                if (j < m->column - 1 && m->data[i][j + 1] == EMPTY) m->data[i][j + 1] = POSSIBLE_MOVE;
-
-                if (j > 0 && m->data[i][j - 1] ==EMPTY) m->data[i][j - 1] = POSSIBLE_MOVE;
-
-                if (i < m->row - 1 && j < m->column - 1 && m->data[i + 1][j + 1] == EMPTY) m->data[i + 1][j + 1] = POSSIBLE_MOVE;
-
-                if (i > 0 && j < m->column - 1 && m->data[i - 1][j + 1] == EMPTY) m->data[i - 1][j + 1] = POSSIBLE_MOVE;
-
-                if (i > 0 && j > 0 && m->data[i - 1][j - 1] == EMPTY) m->data[i - 1][j - 1] = POSSIBLE_MOVE;
-
-                if (i < m->row - 1 && j > 0 && m->data[i + 1][j - 1] == EMPTY) m->data[i + 1][j - 1] = POSSIBLE_MOVE;
-            }
-        }
-    }
-}
-
-void  change_table(table *t, matrix *m, int player, char p) {
-    int i,j,f,d,dx,dy,x,y,flipped;
-    int directions[8][2] = { {-1,0}, {-1,1}, {0,1}, {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1} };
-
-    for (i = 0; i < m->row; i++) {
-        for (j = 0; j < m->column; j++) {
-            if (m->data[i][j] == player) {
-                for (d = 0; d < 8; d++) {
-                    dx = directions[d][0];
-                    dy = directions[d][1];
-                    x = i + dx;
-                    y = j + dy;
-                    flipped = 0;
-
-                    while (x >= 0 && x < m->row && y >= 0 && y < m->column && m->data[x][y] == -player) {
-                        flipped++;
-                        x += dx;
-                        y += dy;
-                    }
-
-                    if (flipped > 0 && x >= 0 && x < m->row && y >= 0 && y < m->column && m->data[x][y] == player) {
-                        int back_x = i + dx;
-                        int back_y = j + dy;
-                        for (f = 0; f < flipped; f++) {
-                            m->data[back_x][back_y] = player;
-                            t->data[back_x][back_y] = p;
-                            back_x += dx;
-                            back_y += dy;
-
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
-}
-
-int test_flip_count(matrix m, int i, int j, int player) {
-    int count = 0,d,dx,dy,x,y,flipped;
-    int directions[8][2] = { {-1,0}, {-1,1}, {0,1}, {1,1}, {1,0}, {1,-1}, {0,-1}, {-1,-1} };
-
-    for (d = 0; d < 8; d++) {
-        dx = directions[d][0];
-        dy = directions[d][1];
-
-        x = i + dx;
-        y = j + dy;
-        flipped = 0;
-
-        while (x >= 0 && x < m.row && y >= 0 && y < m.column && m.data[x][y] == -player) {
-            flipped++;
-            x += dx;
-            y += dy;
-        }
-
-        if (flipped > 0 && x >= 0 && x < m.row && y >= 0 && y < m.column && m.data[x][y] == player) {
-            count += flipped;
-        }
-    }
-
-    return count;
-}
-
-void find_best_move(matrix m, int player, int *best_i, int *best_j,char *letter) {
-    int max_flips = 0, i, j;
-    int fallback_i = -1, fallback_j = -1;  /*Eğer hiç döndürme yoksa fallback hamleye dön*/ 
-
-    for (i = 0; i < m.row; i++) {
-        for (j = 0; j < m.column; j++) {
-            if (m.data[i][j] == POSSIBLE_MOVE) {
-                int flips = test_flip_count(m, i, j, player);
-
-                if (flips > max_flips) {
-                    max_flips = flips;
-                    *best_i = i;
-                    *best_j = j;
-                }
-
-                
-                if (fallback_i == -1 && flips == 0) {
-                    fallback_i = i;
-                    fallback_j = j;
-                }
-            }
-        }
-    }
 
     
-    if (max_flips == 0 && fallback_i != -1) {
-        *best_i = fallback_i;
-        *best_j = fallback_j;
-    }
-    printf("Computer chose move at: (%c, %d)\n", letter[*best_i+1], *best_j);
+    
+    unique_numbers_within_rage(4,attacker_or_defender,2);
+    printf("Wizard duel begins: %s vs  %s !\n",wizards[attacker_or_defender[0]].name,wizards[attacker_or_defender[1]].name);
+    duel(&wizards[attacker_or_defender[0]],&wizards[attacker_or_defender[1]]);
 
-}
+        statu[0]=wizards[attacker_or_defender[0]].battle_stat.total_damage_dealt;
+        statu[1]=wizards[attacker_or_defender[0]].battle_stat.mana_spent;
+        statu[2]=wizards[attacker_or_defender[0]].battle_stat.number_of_recoveries;
+        score=calculate_score(statu,3);
+    
 
-void computer_move(matrix *m, table *t,char *letter) {
-    int x=1,y=1;
+    printf("Battle summary: \n");
+    printf("%s ---DAMAGE :%d| MANA SPENT : %d | recoveries %d |score :%d  \n",wizards[attacker_or_defender[0]].name,
+                                                                    wizards[attacker_or_defender[1]].battle_stat.total_damage_dealt
+                                                                    ,wizards[attacker_or_defender[0]].battle_stat.mana_spent
+                                                                    ,wizards[attacker_or_defender[0]].battle_stat.number_of_recoveries
+                                                                    ,score);
+        statu[0]=wizards[attacker_or_defender[1]].battle_stat.total_damage_dealt;
+        statu[1]=wizards[attacker_or_defender[1]].battle_stat.mana_spent;
+        statu[2]=wizards[attacker_or_defender[1]].battle_stat.number_of_recoveries;
+        score=calculate_score(statu,3);
 
-    find_best_move(*m,COMPUTER,&x,&y,letter) ;
+    printf("%s ---DAMAGE :%d| MANA SPENT : %d | recoveries %d |score : %d \n",wizards[attacker_or_defender[1]].name,
+                                                                    wizards[attacker_or_defender[0]].battle_stat.total_damage_dealt
+                                                                    ,wizards[attacker_or_defender[1]].battle_stat.mana_spent
+                                                                    ,wizards[attacker_or_defender[1]].battle_stat.number_of_recoveries
+                                                                    ,score);
 
-    m->data[x][y] = COMPUTER;
-
-    t->data[x][y]=char_copm;
-
-    change_table(t, m, COMPUTER, char_copm);
-
-    mark_neighbors(m);
+    free(created_spell);
 }

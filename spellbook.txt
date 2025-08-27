@@ -1,0 +1,6 @@
+Fireball,fire,10,25,30,40
+Inferno,fire,15,30,20,33
+Flame Surge,air,12,22,34,43
+Ice Shard,ice,8,20,12,37
+Freeze,ice,10,24,40,23
+Blizzard,water,14,28,19,23
