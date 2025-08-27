@@ -1,0 +1,8 @@
+--- Game Moves ---
+Move 1: (Row 0, Col 0)
+Move 2: (Row 3, Col 3)
+Move 3: (Row 3, Col 0)
+Move 4: (Row 0, Col 2)
+Move 5: (Row 0, Col 3)
+
+Total Moves: 5
